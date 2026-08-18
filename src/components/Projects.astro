@@ -1,0 +1,55 @@
+---
+import ProjectCard from './ProjectCard.astro';
+
+const projects = [];
+---
+
+<section id="projects" class="projects">
+  <div class="container">
+    <h2>Proyectos</h2>
+    {projects.length === 0 ? (
+      <div class="empty-state">
+        <p>🚀 Próximamente agregaré proyectos aquí. ¡Espéralos pronto!</p>
+      </div>
+    ) : (
+      <div class="projects-grid">
+        {projects.map(project => (
+          <ProjectCard
+            title={project.title}
+            description={project.description}
+            image={project.image}
+            repoUrl={project.repoUrl}
+            demoUrl={project.demoUrl}
+          />
+        ))}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .empty-state p {
+    color: var(--text-muted);
+    font-size: 1.125rem;
+  }
+
+  @media (max-width: 768px) {
+    .projects-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

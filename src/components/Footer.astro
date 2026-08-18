@@ -1,0 +1,56 @@
+---
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="container">
+    <p>&copy; {currentYear} [Tu Nombre]. Todos los derechos reservados.</p>
+    <div class="social-links">
+      <a href="https://github.com/tu-username" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://linkedin.com/in/tu-username" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      <a href="mailto:tu-email@example.com">Email</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 0;
+    margin-top: auto;
+  }
+
+  .footer .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .social-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .social-links a {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .social-links a:hover {
+    color: var(--text);
+  }
+
+  @media (max-width: 768px) {
+    .footer .container {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+</style>

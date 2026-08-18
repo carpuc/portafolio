@@ -1,0 +1,82 @@
+---
+---
+
+<section id="about" class="about">
+  <div class="container">
+    <h2>Sobre mí</h2>
+    <div class="about-content">
+      <div class="about-image">
+        <div class="avatar">👤</div>
+      </div>
+      <div class="about-text">
+        <h1>[Tu Nombre]</h1>
+        <p class="tagline">Desarrollador Web Full Stack</p>
+        <p>
+          Soy un desarrollador apasionado por crear experiencias web modernas y funcionales. 
+          Me encanta aprender nuevas tecnologías y resolver problemas complejos con código limpio y eficiente.
+        </p>
+        <p>
+          Actualmente estoy enfocado en el desarrollo front-end con frameworks modernos 
+          y explorando nuevas herramientas para mejorar mi flujo de trabajo.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .about {
+    padding-top: 6rem;
+  }
+
+  .about-content {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .avatar {
+    width: 150px;
+    height: 150px;
+    background-color: var(--card-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    border: 3px solid var(--border);
+  }
+
+  .about-text h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .tagline {
+    color: var(--accent);
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .about-text p {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    max-width: 600px;
+  }
+
+  @media (max-width: 768px) {
+    .about-content {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+
+    .avatar {
+      margin: 0 auto;
+    }
+
+    .about-text p {
+      margin: 0 auto 1rem;
+    }
+  }
+</style>
