@@ -1,0 +1,366 @@
+<div class="xml-formatter">
+  <div class="xml-toolbar">
+    <label class="xml-indent">
+      Indentación
+      <select id="xml-indent" aria-label="Indentación del formato">
+        <option value="2">2 espacios</option>
+        <option value="4">4 espacios</option>
+        <option value="tab">Tab</option>
+      </select>
+    </label>
+    <div class="xml-actions">
+      <button id="xml-format" class="btn btn-primary" type="button">Formatear</button>
+      <button id="xml-minify" class="btn" type="button">Minimizar</button>
+      <button id="xml-copy" class="btn" type="button">Copiar</button>
+      <button id="xml-save" class="btn" type="button">Guardar</button>
+      <button id="xml-clear" class="btn" type="button">Limpiar</button>
+    </div>
+  </div>
+
+  <p id="xml-error" class="tool-error" role="alert"></p>
+
+  <div class="xml-editors">
+    <div class="xml-editor">
+      <label for="xml-input" class="xml-label">Entrada</label>
+      <textarea
+        id="xml-input"
+        class="xml-textarea"
+        placeholder='Pega aquí tu XML, por ejemplo: <catalogo><libro id="1"><titulo>El Quijote</titulo></libro></catalogo>'
+        spellcheck="false"
+        aria-describedby="xml-error"
+      ></textarea>
+    </div>
+    <div class="xml-editor">
+      <label for="xml-output" class="xml-label">Resultado</label>
+      <textarea
+        id="xml-output"
+        class="xml-textarea"
+        readonly
+        placeholder="El resultado aparecerá aquí…"
+        spellcheck="false"
+      ></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { copyText } from '../lib/clipboard';
+  import { downloadBlob } from '../lib/download';
+
+  const input = document.getElementById('xml-input');
+  const output = document.getElementById('xml-output');
+  const indentSelect = document.getElementById('xml-indent');
+  const formatBtn = document.getElementById('xml-format');
+  const minifyBtn = document.getElementById('xml-minify');
+  const copyBtn = document.getElementById('xml-copy');
+  const saveBtn = document.getElementById('xml-save');
+  const clearBtn = document.getElementById('xml-clear');
+  const errorEl = document.getElementById('xml-error');
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('visible');
+  }
+
+  function clearError() {
+    errorEl.textContent = '';
+    errorEl.classList.remove('visible');
+  }
+
+  function indentUnit() {
+    return indentSelect.value === 'tab' ? '\t' : ' '.repeat(Number(indentSelect.value));
+  }
+
+  function findTagEnd(xml, i) {
+    let quote = null;
+    let j = i + 1;
+    while (j < xml.length) {
+      const ch = xml[j];
+      if (quote !== null) {
+        if (ch === quote) quote = null;
+      } else if (ch === '"' || ch === "'") {
+        quote = ch;
+      } else if (ch === '>') {
+        return j;
+      }
+      j++;
+    }
+    return -1;
+  }
+
+  function tokenize(xml) {
+    const tokens = [];
+    let i = 0;
+    while (i < xml.length) {
+      if (xml[i] !== '<') {
+        const next = xml.indexOf('<', i);
+        const end = next === -1 ? xml.length : next;
+        tokens.push({ type: 'text', raw: xml.slice(i, end) });
+        i = end;
+        continue;
+      }
+
+      if (xml.startsWith('<!--', i)) {
+        const end = xml.indexOf('-->', i + 4);
+        if (end === -1) { tokens.push({ type: 'comment', raw: xml.slice(i) }); break; }
+        tokens.push({ type: 'comment', raw: xml.slice(i, end + 3) });
+        i = end + 3;
+        continue;
+      }
+
+      if (xml.startsWith('<![CDATA[', i)) {
+        const end = xml.indexOf(']]>', i + 9);
+        if (end === -1) { tokens.push({ type: 'text', raw: xml.slice(i) }); break; }
+        tokens.push({ type: 'cdata', raw: xml.slice(i, end + 3) });
+        i = end + 3;
+        continue;
+      }
+
+      if (xml.startsWith('<?', i)) {
+        const end = xml.indexOf('?>', i + 2);
+        if (end === -1) { tokens.push({ type: 'declaration', raw: xml.slice(i) }); break; }
+        tokens.push({ type: 'declaration', raw: xml.slice(i, end + 2) });
+        i = end + 2;
+        continue;
+      }
+
+      if (/^<![A-Za-z]/.test(xml.slice(i, i + 3))) {
+        let j = i + 2;
+        let depth = 0;
+        while (j < xml.length) {
+          const ch = xml[j];
+          if (ch === '[') depth++;
+          else if (ch === ']') depth--;
+          else if (ch === '>' && depth <= 0) break;
+          j++;
+        }
+        tokens.push({ type: 'doctype', raw: xml.slice(i, j + 1) });
+        i = j + 1;
+        continue;
+      }
+
+      if (xml.startsWith('</', i)) {
+        const end = findTagEnd(xml, i);
+        if (end === -1) { tokens.push({ type: 'text', raw: xml.slice(i) }); break; }
+        tokens.push({ type: 'endTag', raw: xml.slice(i, end + 1) });
+        i = end + 1;
+        continue;
+      }
+
+      const end = findTagEnd(xml, i);
+      if (end === -1) { tokens.push({ type: 'text', raw: xml.slice(i) }); break; }
+      const tag = xml.slice(i, end + 1);
+      const self = /\/\s*>$/.test(tag);
+      tokens.push({ type: self ? 'selfClose' : 'startTag', raw: tag });
+      i = end + 1;
+    }
+    return tokens;
+  }
+
+  function analyze(tokens) {
+    const open = [];
+    const frames = [];
+    tokens.forEach((t, idx) => {
+      if (t.type === 'text') {
+        if (t.raw.trim() !== '') {
+          const f = open[open.length - 1];
+          if (f) f.mixed = true;
+        }
+      } else if (t.type === 'startTag') {
+        const f = { depth: open.length, mixed: false, endIdx: -1 };
+        open.push(f);
+        frames[idx] = f;
+      } else if (t.type === 'endTag') {
+        const f = open.pop();
+        if (f) f.endIdx = idx;
+      }
+    });
+    return frames;
+  }
+
+  function format(tokens, unit) {
+    const frames = analyze(tokens);
+    const out = [];
+    let depth = 0;
+    const push = (d, s) => out.push(unit.repeat(d) + s);
+
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type === 'startTag') {
+        const f = frames[i];
+        if (f && f.mixed) {
+          let inline = '';
+          for (let j = i; j <= f.endIdx; j++) inline += tokens[j].raw;
+          push(depth, inline);
+          i = f.endIdx;
+          continue;
+        }
+        push(depth, t.raw);
+        depth++;
+      } else if (t.type === 'endTag') {
+        depth--;
+        push(depth, t.raw);
+      } else if (t.type === 'text') {
+        if (t.raw.trim() !== '') push(depth, t.raw);
+      } else {
+        push(depth, t.raw);
+      }
+    }
+    return out.join('\n');
+  }
+
+  function minify(tokens) {
+    return tokens
+      .filter((t) => !(t.type === 'text' && t.raw.trim() === ''))
+      .map((t) => t.raw)
+      .join('');
+  }
+
+  function parseXml(xml) {
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const err = doc.querySelector('parsererror');
+    if (err) {
+      return { ok: false, message: 'XML inválido: ' + (err.textContent || '').replace(/\s+/g, ' ').trim() };
+    }
+    return { ok: true };
+  }
+
+  function process(minifyMode) {
+    clearError();
+    const raw = input.value.trim();
+    if (!raw) {
+      showError('No hay texto para procesar. Pega un XML en el área de entrada primero.');
+      return;
+    }
+    const check = parseXml(raw);
+    if (!check.ok) {
+      showError(check.message);
+      return;
+    }
+    const tokens = tokenize(raw);
+    output.value = minifyMode ? minify(tokens) : format(tokens, indentUnit());
+  }
+
+  formatBtn?.addEventListener('click', () => process(false));
+  minifyBtn?.addEventListener('click', () => process(true));
+
+  copyBtn?.addEventListener('click', async () => {
+    clearError();
+    if (!output.value) {
+      showError('No hay resultado para copiar. Formatea o minimiza primero.');
+      return;
+    }
+    const label = copyBtn.textContent;
+    try {
+      await copyText(output.value);
+    } catch {
+      /* el navegador ya reporta el estado del portapapeles */
+    }
+    copyBtn.textContent = '✓ Copiado';
+    setTimeout(() => {
+      copyBtn.textContent = label;
+    }, 1500);
+  });
+
+  saveBtn?.addEventListener('click', () => {
+    clearError();
+    if (!output.value) {
+      showError('No hay resultado para guardar. Formatea o minimiza primero.');
+      return;
+    }
+    const blob = new Blob([output.value], { type: 'application/xml' });
+    downloadBlob(blob, 'datos.xml');
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    input.value = '';
+    output.value = '';
+    clearError();
+  });
+</script>
+
+<style>
+  .xml-formatter {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .xml-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .xml-indent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .xml-indent select {
+    background-color: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .xml-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .xml-editors {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .xml-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .xml-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .xml-textarea {
+    width: 100%;
+    min-height: 400px;
+    background-color: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    tab-size: 4;
+  }
+
+  .xml-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  @media (max-width: 768px) {
+    .xml-editors {
+      grid-template-columns: 1fr;
+    }
+
+    .xml-textarea {
+      min-height: 220px;
+    }
+  }
+</style>

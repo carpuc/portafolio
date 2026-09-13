@@ -1,0 +1,101 @@
+---
+import { tools } from '../data/tools';
+---
+
+<section id="tools" class="tools">
+  <div class="container">
+    <h2>Herramientas</h2>
+    <p class="tools-intro">
+      Utilidades que uso a diario como desarrollador. La primera ya está
+      disponible, las demás están en camino.
+    </p>
+    <div class="tools-grid">
+      {tools.map(tool => (
+        tool.status === 'available' ? (
+          <a class="tool-card" href={tool.path}>
+            <span class="tool-icon" aria-hidden="true">{tool.icon}</span>
+            <h3>{tool.name}</h3>
+            <p>{tool.description}</p>
+            <span class="tool-status available">Disponible</span>
+          </a>
+        ) : (
+          <div class="tool-card">
+            <span class="tool-icon" aria-hidden="true">{tool.icon}</span>
+            <h3>{tool.name}</h3>
+            <p>{tool.description}</p>
+            <span class="tool-status coming">Próximamente</span>
+          </div>
+        )
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .tools {
+    padding-top: 6rem;
+  }
+
+  .tools-intro {
+    color: var(--text-muted);
+    max-width: 600px;
+    margin-bottom: 2rem;
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    color: var(--text);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  }
+
+  a.tool-card:hover {
+    transform: translateY(-4px);
+    text-decoration: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border-color: var(--accent);
+  }
+
+  .tool-icon {
+    font-family: monospace;
+    font-size: 1.25rem;
+    color: var(--accent);
+  }
+
+  .tool-card h3 {
+    margin-bottom: 0.25rem;
+  }
+
+  .tool-card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    flex-grow: 1;
+  }
+
+  .tool-status {
+    align-self: flex-start;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+
+  .tool-status.available {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+</style>

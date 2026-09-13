@@ -1,0 +1,57 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title: string;
+  toolName: string;
+}
+
+const { title, toolName } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title={title}>
+  <Header />
+  <main class="tool-layout">
+    <div class="container">
+      <a href={base} class="tool-breadcrumb">← Caja de herramientas</a>
+      <h1 class="tool-title">{toolName}</h1>
+      <div class="tool-body">
+        <slot />
+      </div>
+    </div>
+  </main>
+  <Footer />
+</BaseLayout>
+
+<style>
+  .tool-layout {
+    min-height: 100vh;
+    padding: 7rem 0 3rem;
+  }
+
+  .tool-breadcrumb {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .tool-breadcrumb:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .tool-title {
+    margin-bottom: 2rem;
+  }
+
+  .tool-body {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+</style>

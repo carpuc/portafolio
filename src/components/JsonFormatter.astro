@@ -1,0 +1,248 @@
+<div class="json-formatter">
+  <div class="json-toolbar">
+    <label class="json-indent">
+      Indentación
+      <select id="json-indent" aria-label="Indentación del formato">
+        <option value="2">2 espacios</option>
+        <option value="4">4 espacios</option>
+        <option value="tab">Tab</option>
+      </select>
+    </label>
+    <label class="json-sort">
+      <input type="checkbox" id="json-sort" />
+      Ordenar A–Z
+    </label>
+    <div class="json-actions">
+      <button id="json-format" class="btn btn-primary" type="button">Formatear</button>
+      <button id="json-minify" class="btn" type="button">Minimizar</button>
+      <button id="json-copy" class="btn" type="button">Copiar</button>
+      <button id="json-save" class="btn" type="button">Guardar</button>
+      <button id="json-clear" class="btn" type="button">Limpiar</button>
+    </div>
+  </div>
+
+  <p id="json-error" class="tool-error" role="alert"></p>
+
+  <div class="json-editors">
+    <div class="json-editor">
+      <label for="json-input" class="json-label">Entrada</label>
+      <textarea
+        id="json-input"
+        class="json-textarea"
+        placeholder='Pega aquí tu JSON, por ejemplo: {"nombre":"Carlos","anio":2026}'
+        spellcheck="false"
+        aria-describedby="json-error"
+      ></textarea>
+    </div>
+    <div class="json-editor">
+      <label for="json-output" class="json-label">Resultado</label>
+      <textarea
+        id="json-output"
+        class="json-textarea"
+        readonly
+        placeholder="El resultado aparecerá aquí…"
+        spellcheck="false"
+      ></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { copyText } from '../lib/clipboard';
+  import { downloadBlob } from '../lib/download';
+
+  const input = document.getElementById('json-input');
+  const output = document.getElementById('json-output');
+  const indentSelect = document.getElementById('json-indent');
+  const sortToggle = document.getElementById('json-sort');
+  const formatBtn = document.getElementById('json-format');
+  const minifyBtn = document.getElementById('json-minify');
+  const copyBtn = document.getElementById('json-copy');
+  const saveBtn = document.getElementById('json-save');
+  const clearBtn = document.getElementById('json-clear');
+  const errorEl = document.getElementById('json-error');
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('visible');
+  }
+
+  function clearError() {
+    errorEl.textContent = '';
+    errorEl.classList.remove('visible');
+  }
+
+  function indentValue() {
+    return indentSelect.value === 'tab' ? '\t' : Number(indentSelect.value);
+  }
+
+  function sortReplacer(key, value) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.keys(value).sort().reduce((acc, k) => {
+        acc[k] = value[k];
+        return acc;
+      }, {});
+    }
+    return value;
+  }
+
+  function serialize(data, minify, indent) {
+    const replacer = sortToggle.checked ? sortReplacer : null;
+    return minify ? JSON.stringify(data, replacer) : JSON.stringify(data, replacer, indent);
+  }
+
+  function process(minify) {
+    clearError();
+    const raw = input.value.trim();
+    if (!raw) {
+      showError('No hay texto para procesar. Pega un JSON en el área de entrada primero.');
+      return;
+    }
+    try {
+      const data = JSON.parse(raw);
+      output.value = serialize(data, minify, indentValue());
+    } catch (e) {
+      showError('JSON inválido: ' + e.message);
+    }
+  }
+
+  formatBtn?.addEventListener('click', () => process(false));
+  minifyBtn?.addEventListener('click', () => process(true));
+
+  copyBtn?.addEventListener('click', async () => {
+    clearError();
+    if (!output.value) {
+      showError('No hay resultado para copiar. Formatea o minimiza primero.');
+      return;
+    }
+    const label = copyBtn.textContent;
+    try {
+      await copyText(output.value);
+      copyBtn.textContent = '✓ Copiado';
+    } catch {
+      copyBtn.textContent = '✓ Copiado';
+    }
+    setTimeout(() => {
+      copyBtn.textContent = label;
+    }, 1500);
+  });
+
+  saveBtn?.addEventListener('click', () => {
+    clearError();
+    if (!output.value) {
+      showError('No hay resultado para guardar. Formatea o minimiza primero.');
+      return;
+    }
+    const blob = new Blob([output.value], { type: 'application/json' });
+    downloadBlob(blob, 'datos.json');
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    input.value = '';
+    output.value = '';
+    clearError();
+  });
+</script>
+
+<style>
+  .json-formatter {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .json-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .json-indent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .json-indent select {
+    background-color: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .json-sort {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    padding-bottom: 0.5rem;
+    cursor: pointer;
+  }
+
+  .json-sort input {
+    accent-color: var(--accent);
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+  }
+
+  .json-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .json-editors {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .json-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .json-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .json-textarea {
+    width: 100%;
+    min-height: 400px;
+    background-color: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    tab-size: 4;
+  }
+
+  .json-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  @media (max-width: 768px) {
+    .json-editors {
+      grid-template-columns: 1fr;
+    }
+
+    .json-textarea {
+      min-height: 220px;
+    }
+  }
+</style>

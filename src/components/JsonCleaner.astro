@@ -1,0 +1,209 @@
+<div class="json-cleaner">
+  <div class="toolbar">
+    <label class="indent">
+      Indentación
+      <select id="cleaner-indent" aria-label="Indentación del formato">
+        <option value="2">2 espacios</option>
+        <option value="4">4 espacios</option>
+        <option value="tab">Tab</option>
+      </select>
+    </label>
+    <div class="actions">
+      <button id="cleaner-run" class="btn btn-primary" type="button">Limpiar diagonales</button>
+      <button id="cleaner-copy" class="btn" type="button">Copiar</button>
+      <button id="cleaner-save" class="btn" type="button">Guardar</button>
+      <button id="cleaner-clear" class="btn" type="button">Limpiar</button>
+    </div>
+  </div>
+
+  <p id="cleaner-error" class="tool-error" role="alert"></p>
+
+  <div class="editors">
+    <div class="editor">
+      <label for="cleaner-input" class="label">Entrada</label>
+      <textarea
+        id="cleaner-input"
+        class="textarea"
+        placeholder='Pega aquí un JSON con diagonales de escape, por ejemplo: {\"clave\":\"valor\"}'
+        spellcheck="false"
+        aria-describedby="cleaner-error"
+      ></textarea>
+    </div>
+    <div class="editor">
+      <label for="cleaner-output" class="label">Resultado</label>
+      <textarea
+        id="cleaner-output"
+        class="textarea"
+        readonly
+        placeholder="El JSON limpio aparecerá aquí…"
+        spellcheck="false"
+      ></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { unescapeJson } from '../lib/unescapeJson';
+  import { copyText } from '../lib/clipboard';
+  import { downloadBlob } from '../lib/download';
+
+  const input = document.getElementById('cleaner-input');
+  const output = document.getElementById('cleaner-output');
+  const indentSelect = document.getElementById('cleaner-indent');
+  const runBtn = document.getElementById('cleaner-run');
+  const copyBtn = document.getElementById('cleaner-copy');
+  const saveBtn = document.getElementById('cleaner-save');
+  const clearBtn = document.getElementById('cleaner-clear');
+  const errorEl = document.getElementById('cleaner-error');
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('visible');
+  }
+
+  function clearError() {
+    errorEl.textContent = '';
+    errorEl.classList.remove('visible');
+  }
+
+  function indentValue() {
+    return indentSelect.value === 'tab' ? '\t' : Number(indentSelect.value);
+  }
+
+  function clean() {
+    clearError();
+    const raw = input.value.trim();
+    if (!raw) {
+      showError('No hay texto para procesar. Pega un JSON con diagonales de escape primero.');
+      return;
+    }
+    try {
+      const cleaned = unescapeJson(raw);
+      const data = JSON.parse(cleaned);
+      output.value = JSON.stringify(data, null, indentValue());
+    } catch (e) {
+      showError(e.message || 'No se pudo limpiar el JSON.');
+    }
+  }
+
+  runBtn?.addEventListener('click', () => clean());
+  copyBtn?.addEventListener('click', async () => {
+    clearError();
+    if (!output.value) {
+      showError('No hay resultado para copiar. Limpia el JSON primero.');
+      return;
+    }
+    const label = copyBtn.textContent;
+    try {
+      await copyText(output.value);
+    } catch {
+      // fallback ya manejado por copyText
+    }
+    copyBtn.textContent = '✓ Copiado';
+    setTimeout(() => {
+      copyBtn.textContent = label;
+    }, 1500);
+  });
+
+  saveBtn?.addEventListener('click', () => {
+    clearError();
+    if (!output.value) {
+      showError('No hay resultado para guardar. Limpia el JSON primero.');
+      return;
+    }
+    const blob = new Blob([output.value], { type: 'application/json' });
+    downloadBlob(blob, 'datos.json');
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    input.value = '';
+    output.value = '';
+    clearError();
+  });
+</script>
+
+<style>
+  .json-cleaner {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .indent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .indent select {
+    background-color: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .editors {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .textarea {
+    width: 100%;
+    min-height: 400px;
+    background-color: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    tab-size: 4;
+  }
+
+  .textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  @media (max-width: 768px) {
+    .editors {
+      grid-template-columns: 1fr;
+    }
+
+    .textarea {
+      min-height: 220px;
+    }
+  }
+</style>

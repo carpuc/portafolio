@@ -58,7 +58,7 @@
 
 - [x] 9.1 Crear archivo .github/workflows/deploy.yml
 - [x] 9.2 Configurar GitHub Actions para build y deploy a GitHub Pages
-- [ ] 9.3 Hacer push a repo en GitHub
+- [x] 9.3 Hacer push a repo en GitHub
 - [x] 9.4 Activar GitHub Pages en Settings → Pages → Source: GitHub Actions
 - [x] 9.5 Verificar que el sitio está disponible en https://litospuc.github.io
 
